@@ -1,4 +1,4 @@
-import Html exposing (Html, div, text)
+import Html exposing (Html, div, text, span)
 
 
 
@@ -45,7 +45,11 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  div [] [text "hello world"]
+  div []
+    [ span [] [text (model.root ++ " ")]
+    , span [] [text (model.chord ++ " ")]
+    , span [] [text (model.lead ++ " ")]
+    ]
 
 
 
