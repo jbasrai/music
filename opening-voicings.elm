@@ -26,44 +26,42 @@ type alias Target =
   }
 
 
--- allTargets : List Target
+roots : List String
+roots =
+  [ "A"
+  , "Aflat"
+  , "B"
+  , "Bflat"
+  , "C"
+  , "D"
+  , "Dflat"
+  , "E"
+  , "Eflat"
+  , "F"
+  , "G"
+  , "Gflat"
+  ]
+
+
+voicings : List (String, List Int)
+voicings =
+  [ ("Maj6", [1, 3, 5, 6])
+  , ("min6", [1, 3, 5, 6])
+  ]
+
+
 allTargets =
   let
-      roots : List String
-      roots =
-        [ "A"
-        , "Aflat"
-        , "B"
-        , "Bflat"
-        , "C"
-        , "D"
-        , "Dflat"
-        , "E"
-        , "Eflat"
-        , "F"
-        , "G"
-        , "Gflat"
-        ]
-
-      voicings : List (String, List Int)
-      voicings =
-        [ ("Maj6", [1, 3, 5, 6])
-        , ("min6", [1, 3, 5, 6])
-        ]
-
-      explodedVoicings : List (String, Int)
-      explodedVoicings =
+      explodedEverything : List Target
+      explodedEverything =
         List.map (\(chord, lead) -> ([chord], lead)) voicings
         |> List.map (\(chord, lead) -> (explode chord lead))
         |> List.concat
-
-      explodedEverything : List Target
-      explodedEverything =
-        explode roots explodedVoicings
+        |> explode roots
         |> List.map (\(root, (chord, lead)) -> Target root chord lead)
 
   in
-      explodedEverything
+      Debug.log "all targets" explodedEverything
 
 
 type alias Model =
@@ -92,9 +90,28 @@ update msg model =
 -- VIEW
 
 
+textWithSpace : String -> Html Msg
+textWithSpace t =
+  text (t ++ " ")
+
+
+renderRow : Target -> Html Msg
+renderRow {root, chord, lead} =
+  div []
+    [ span [] [textWithSpace root]
+    , span [] [textWithSpace chord]
+    , span [] [textWithSpace (toString lead)]
+    ]
+
+
+renderTable : List Target -> List (Html Msg)
+renderTable targets =
+  List.map renderRow targets
+
+
 view : Model -> Html Msg
 view model =
-  div [] [text "hello"]
+  div [] (renderTable model.table)
 
 
 
