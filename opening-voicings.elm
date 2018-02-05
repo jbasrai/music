@@ -1,7 +1,8 @@
 import Html exposing (Html, div, text, span, button)
 import Dict
 import Debug exposing (log)
-
+import Random
+import Random.List exposing (shuffle)
 
 
 main =
@@ -69,12 +70,14 @@ type alias Model =
   }
 
 
-type Msg = Nil
+type Msg = Randomize | Update (List Target)
 
 
 init : (Model, Cmd Msg)
 init =
-  (Model allTargets, Cmd.none)
+  ( Model allTargets
+  , Random.generate Update (shuffle allTargets)
+  )
 
 
 
@@ -83,7 +86,13 @@ init =
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-  (model, Cmd.none)
+  case msg of
+    Randomize ->
+      (model, Random.generate Update (shuffle model.table))
+
+    Update table ->
+      (Model table, Cmd.none)
+
 
 
 
