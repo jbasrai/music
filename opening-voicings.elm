@@ -65,9 +65,9 @@ allTargets =
   in
       explodedEverything
 
+
 type alias Model =
-  { target : Target
-  , table : List Target
+  { table : List Target
   }
 
 
@@ -76,11 +76,7 @@ type Msg = Nil
 
 init : (Model, Cmd Msg)
 init =
-  let
-    target =
-      Target "Bflat" "Maj7" 7
-  in
-    (Model target [], Cmd.none)
+  (Model allTargets, Cmd.none)
 
 
 
@@ -98,16 +94,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  let
-      target =
-        model.target
-  in
-    div []
-      [ span [] [text (target.root ++ " ")]
-      , span [] [text (target.chord ++ " ")]
-      , span [] [text ((toString target.lead) ++ " ")]
-      , button [] [text "next"]
-      ]
+  div [] [text "hello"]
 
 
 
