@@ -3,7 +3,7 @@ import Dict
 import Debug exposing (log)
 import Random
 import Random.List exposing (shuffle)
-import Voicing exposing (Voicing)
+import Chord exposing (Chord)
 
 
 main =
@@ -17,26 +17,31 @@ main =
 
 -- INIT
 type alias Model =
-  { table : List Voicing
+  { chords : List Chord
   }
 
 
 init : (Model, Cmd Msg)
 init =
-  (Model Voicing.all, Cmd.none)
+  (Model Chord.all, Random.generate NewChord (Random.List.shuffle Chord.all))
 
 
 
 -- UPDATE
 
 
-type alias Msg = String
+type Msg = RandomChords | NewChord (List Chord)
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
-  (model, Cmd.none)
+update msg model = case msg of
+  RandomChords ->
+    ( model
+    , Random.generate NewChord (Random.List.shuffle model.chords)
+    )
 
+  NewChord chords ->
+    (Model chords, Cmd.none)
 
 
 -- VIEW
@@ -44,7 +49,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  div [] [text (toString (List.length model.table))]
+  div [] [text (toString model.chords)]
 
 
 
