@@ -1,4 +1,4 @@
-import Html exposing (Html, div, text, span, button, h1)
+import Html exposing (Html, div, text, span, button, h1, input)
 import Html.Events exposing (onClick)
 import Dict
 import Debug exposing (log)
@@ -23,6 +23,7 @@ main =
 -- INIT
 type alias Model =
   { key : Note
+  , counts : Int
   , lastTick : Time
   , shouldSync : Bool
   , isPaused : Bool
@@ -32,6 +33,7 @@ type alias Model =
 init : (Model, Cmd Msg)
 init =
   ( { key = Note.Bb
+    , counts = 2
     , lastTick = 0
     , shouldSync = False
     , isPaused = False
@@ -44,7 +46,7 @@ init =
 -- UPDATE
 
 
-type Msg = RandomNote | NextNote Note | Tick Time | Sync | Pause
+type Msg = RandomNote | NextNote Note | Tick Time | Sync | Pause | IncrementCount | DecrementCount
 
 randomNote : Note -> Random.Generator Note
 randomNote exclude =
@@ -66,20 +68,29 @@ update msg model = case msg of
     )
 
   Tick time ->
-    if (not model.isPaused
-      && (
-        model.shouldSync
-        || Time.inSeconds (time - model.lastTick) >= 3
-      )
-    ) then
-      ( { model |
-            lastTick = time,
-            shouldSync = False
-        }
-      , Random.generate NextNote (randomNote model.key)
-      )
-    else 
-      (model, Cmd.none)
+    let
+        delta = time - model.lastTick
+
+        leak =
+          let
+              x = delta - (toFloat model.counts * 1000)
+          in
+              if (x > 1000) then 0 else x
+    in
+        if (not model.isPaused
+          && (
+            model.shouldSync
+            || Time.inSeconds delta >= toFloat model.counts
+          )
+        ) then
+          ( { model |
+                lastTick = time - (log "leak" leak),
+                shouldSync = False
+            }
+          , Random.generate NextNote (randomNote model.key)
+          )
+        else 
+          (model, Cmd.none)
 
   Sync ->
     ( { model |
@@ -95,6 +106,16 @@ update msg model = case msg of
     )
 
 
+  IncrementCount ->
+    ( { model | counts = model.counts + 1 }
+    , Cmd.none
+    )
+
+  DecrementCount ->
+    ( { model | counts = model.counts - 1 }
+    , Cmd.none
+    )
+
 -- VIEW
 
 
@@ -102,6 +123,11 @@ view : Model -> Html Msg
 view model =
   div []
     [ h1 [] [text (Note.toString model.key)]
+    , div []
+      [ button [onClick DecrementCount] [text "-"]
+      , text (toString model.counts)
+      , button [onClick IncrementCount] [text "+"]
+      ]
     , div [] [text (if (model.isPaused) then "Paused" else "Playing")]
     , button [onClick Sync] [text "sync"]
     , button [onClick Pause] [text "pause"]
