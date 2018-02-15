@@ -23,6 +23,7 @@ main =
 -- INIT
 type alias Model =
   { key : Note
+  , tempo : Int
   , counts : Int
   , lastTick : Time
   , shouldSync : Bool
@@ -33,6 +34,7 @@ type alias Model =
 init : (Model, Cmd Msg)
 init =
   ( { key = Note.Bb
+    , tempo = 60
     , counts = 2
     , lastTick = 0
     , shouldSync = False
@@ -46,7 +48,7 @@ init =
 -- UPDATE
 
 
-type Msg = RandomNote | NextNote Note | Tick Time | Sync | Pause | IncrementCount | DecrementCount
+type Msg = RandomNote | NextNote Note | Tick Time | Sync | Pause | IncrementCount | DecrementCount | IncrementTempo | DecrementTempo
 
 randomNote : Note -> Random.Generator Note
 randomNote exclude =
@@ -75,12 +77,12 @@ update msg model = case msg of
           let
               x = delta - (toFloat model.counts * 1000)
           in
-              if (x > 1000) then 0 else x
+              if (x > 1000 || x < 0) then 0 else x
     in
         if (not model.isPaused
           && (
             model.shouldSync
-            || Time.inSeconds delta >= toFloat model.counts
+            || log "time" (Time.inSeconds delta) >= log "asdf" ((toFloat model.counts) * (60 / toFloat model.tempo))
           )
         ) then
           ( { model |
@@ -116,6 +118,16 @@ update msg model = case msg of
     , Cmd.none
     )
 
+  IncrementTempo ->
+    ( { model | tempo = model.tempo + 2 }
+    , Cmd.none
+    )
+
+  DecrementTempo ->
+    ( { model | tempo = model.tempo - 2 }
+    , Cmd.none
+    )
+
 -- VIEW
 
 
@@ -123,6 +135,11 @@ view : Model -> Html Msg
 view model =
   div []
     [ h1 [] [text (Note.toString model.key)]
+    , div []
+      [ button [onClick DecrementTempo] [text "-"]
+      , text (toString model.tempo)
+      , button [onClick IncrementTempo] [text "+"]
+      ]
     , div []
       [ button [onClick DecrementCount] [text "-"]
       , text (toString model.counts)
