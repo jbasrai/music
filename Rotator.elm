@@ -72,24 +72,28 @@ update msg model = case msg of
 
   Tick time ->
     let
-        delta = time - model.lastTick
+        tempo = toFloat model.tempo
+        counts = toFloat model.counts
 
-        leak =
-          let
-              x = delta - (toFloat model.counts * 1000)
-          in
-              if (x > 1000 || x < 0) then 0 else x
+        duration : Time
+        duration = Time.second * 60 / tempo * counts
+
+        rotateAt : Time
+        rotateAt = model.lastTick + duration
     in
-        if (not model.isPaused
-          && (
-            model.shouldSync
-            || log "time" (Time.inSeconds delta) >= log "asdf" ((toFloat model.counts) * (60 / toFloat model.tempo))
+        if (model.lastTick == 0) then
+          ( { model | lastTick = time }
+          , Cmd.none
           )
-        ) then
+        else if (model.shouldSync) then
           ( { model |
-                lastTick = time - (log "leak" leak),
+                lastTick = time,
                 shouldSync = False
             }
+          , Random.generate NextNote (randomNote model.key)
+          )
+        else if (not model.isPaused && time >= rotateAt) then
+          ( { model | lastTick = rotateAt }
           , Random.generate NextNote (randomNote model.key)
           )
         else 
