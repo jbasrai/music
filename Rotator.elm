@@ -9,7 +9,8 @@ import Maybe
 import Time exposing (Time)
 
 -- TODO: pseudo random
-
+-- TODO: save settings in local storage
+-- TODO: styles & ui
 
 main =
   Html.program
@@ -132,23 +133,22 @@ update msg model = case msg of
 
 
 view : Model -> Html Msg
-view model =
-  div []
-    [ h1 [] [text (Note.toString model.key)]
-    , div []
-      [ button [onClick DecrementTempo] [text "-"]
-      , text (toString model.tempo)
-      , button [onClick IncrementTempo] [text "+"]
-      ]
-    , div []
-      [ button [onClick DecrementCount] [text "-"]
-      , text (toString model.counts)
-      , button [onClick IncrementCount] [text "+"]
-      ]
-    , div [] [text (if (model.isPaused) then "Paused" else "Playing")]
-    , button [onClick Sync] [text "sync"]
-    , button [onClick Pause] [text "pause"]
+view model = div []
+  [ h1 [] [text (Note.toString model.key)]
+  , div []
+    [ button [onClick DecrementTempo] [text "-"]
+    , text (toString model.tempo)
+    , button [onClick IncrementTempo] [text "+"]
     ]
+  , div []
+    [ button [onClick DecrementCount] [text "-"]
+    , text (toString model.counts)
+    , button [onClick IncrementCount] [text "+"]
+    ]
+  , div [] [text (if (model.isPaused) then "Paused" else "Playing")]
+  , button [onClick Sync] [text "sync"]
+  , button [onClick Pause] [text "pause"]
+  ]
 
 
 
