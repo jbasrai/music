@@ -4,7 +4,7 @@ import Dict
 import Debug exposing (log)
 import Random
 import Random.List
-import Note exposing (Note)
+import Note exposing (Note, NoteString)
 import Maybe
 import Time exposing (Time)
 
@@ -23,7 +23,7 @@ main =
 
 -- INIT
 type alias Model =
-  { root : Note
+  { root : (Note, NoteString)
   , tempo : Int
   , counts : Int
   , lastTick : Time
@@ -34,14 +34,14 @@ type alias Model =
 
 init : (Model, Cmd Msg)
 init =
-  ( { root = Note.Bb
+  ( { root = (Note.Bb, "Bb")
     , tempo = 60
     , counts = 2
     , lastTick = 0
     , shouldSync = False
     , isPaused = False
     }
-  , Random.generate NextNote (randomNote Note.Bb)
+  , Random.generate NextNoteString (randomNote Note.Bb)
   )
 
 
@@ -50,8 +50,8 @@ init =
 
 
 type Msg
-  = RandomNote
-  | NextNote Note
+  = NextNoteString Note
+  | NextNotePair Note NoteString
   | Tick Time
   | Sync
   | Pause
@@ -67,15 +67,20 @@ randomNote exclude =
   |> Random.List.choose
   |> Random.map (\(note, _) -> Maybe.withDefault Note.Db note)
 
+randomNoteString : Note -> Random.Generator NoteString
+randomNoteString note =
+  Random.List.choose (Note.toString note)
+  |> Random.map (\(noteString, _) -> Maybe.withDefault "Bb" noteString)
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
-  RandomNote ->
+  NextNoteString note ->
     ( model
-    , Random.generate NextNote (randomNote model.root)
+    , Random.generate (NextNotePair note) (randomNoteString note)
     )
 
-  NextNote note ->
-    ( { model | root = note }
+  NextNotePair note noteString ->
+    ( { model | root = (note, noteString) }
     , Cmd.none
     )
 
@@ -99,11 +104,11 @@ update msg model = case msg of
                 lastTick = time,
                 shouldSync = False
             }
-          , Random.generate NextNote (randomNote model.root)
+          , Random.generate NextNoteString (randomNote <| Tuple.first model.root)
           )
         else if (not model.isPaused && time >= rotateAt) then
           ( { model | lastTick = rotateAt }
-          , Random.generate NextNote (randomNote model.root)
+          , Random.generate NextNoteString (randomNote <| Tuple.first model.root)
           )
         else 
           (model, Cmd.none)
@@ -147,7 +152,7 @@ update msg model = case msg of
 
 view : Model -> Html Msg
 view model = div []
-  [ h1 [] [text (Note.toString model.root)]
+  [ h1 [] [text <| Tuple.second model.root]
   , div []
     [ button [onClick DecrementTempo] [text "-"]
     , text (toString model.tempo)

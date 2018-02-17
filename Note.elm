@@ -1,4 +1,4 @@
-module Note exposing (Note(..), toString, all)
+module Note exposing (Note(..), NoteString, toString, all)
 
 type Note
   = A
@@ -13,6 +13,8 @@ type Note
   | F
   | G
   | Gb
+
+type alias NoteString = String
 
 all : List Note
 all =
@@ -45,17 +47,17 @@ next note = case note of
   Gb -> G
   G -> Ab
 
-toString : Note -> String
+toString : Note -> List NoteString
 toString note = case note of
-  A -> "A"
-  Ab -> "Ab"
-  B -> "B"
-  Bb -> "Bb"
-  C -> "C"
-  D -> "D"
-  Db -> "Db"
-  E -> "E"
-  Eb -> "Eb"
-  F -> "F"
-  G -> "G"
-  Gb -> "Gb" 
+  A -> ["A"]
+  Ab -> ["Ab"]
+  B -> ["B"]
+  Bb -> ["Bb"]
+  C -> ["C"]
+  D -> ["D"]
+  Db -> ["Db", "Ch"]
+  E -> ["E"]
+  Eb -> ["Eb"]
+  F -> ["F"]
+  G -> ["G"]
+  Gb -> ["Gb", "Fh"]
