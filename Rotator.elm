@@ -23,7 +23,7 @@ main =
 
 -- INIT
 type alias Model =
-  { key : Note
+  { root : Note
   , tempo : Int
   , counts : Int
   , lastTick : Time
@@ -34,7 +34,7 @@ type alias Model =
 
 init : (Model, Cmd Msg)
 init =
-  ( { key = Note.Bb
+  ( { root = Note.Bb
     , tempo = 60
     , counts = 2
     , lastTick = 0
@@ -49,7 +49,16 @@ init =
 -- UPDATE
 
 
-type Msg = RandomNote | NextNote Note | Tick Time | Sync | Pause | IncrementCount | DecrementCount | IncrementTempo | DecrementTempo
+type Msg
+  = RandomNote
+  | NextNote Note
+  | Tick Time
+  | Sync
+  | Pause
+  | IncrementCount
+  | DecrementCount
+  | IncrementTempo
+  | DecrementTempo
 
 randomNote : Note -> Random.Generator Note
 randomNote exclude =
@@ -62,11 +71,11 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
   RandomNote ->
     ( model
-    , Random.generate NextNote (randomNote model.key)
+    , Random.generate NextNote (randomNote model.root)
     )
 
   NextNote note ->
-    ( { model | key = note }
+    ( { model | root = note }
     , Cmd.none
     )
 
@@ -90,11 +99,11 @@ update msg model = case msg of
                 lastTick = time,
                 shouldSync = False
             }
-          , Random.generate NextNote (randomNote model.key)
+          , Random.generate NextNote (randomNote model.root)
           )
         else if (not model.isPaused && time >= rotateAt) then
           ( { model | lastTick = rotateAt }
-          , Random.generate NextNote (randomNote model.key)
+          , Random.generate NextNote (randomNote model.root)
           )
         else 
           (model, Cmd.none)
@@ -138,7 +147,7 @@ update msg model = case msg of
 
 view : Model -> Html Msg
 view model = div []
-  [ h1 [] [text (Note.toString model.key)]
+  [ h1 [] [text (Note.toString model.root)]
   , div []
     [ button [onClick DecrementTempo] [text "-"]
     , text (toString model.tempo)
