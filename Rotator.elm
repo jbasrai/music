@@ -1,5 +1,6 @@
-import Html exposing (Html, div, text, span, button, h1, input)
-import Html.Events exposing (onClick)
+import Html exposing (Html, div, text, span, button, h1, input, label)
+import Html.Events exposing (onClick, onCheck)
+import Html.Attributes exposing (type_, checked)
 import Dict
 import Debug exposing (log)
 import Random
@@ -23,7 +24,8 @@ main =
 
 -- INIT
 type alias Model =
-  { root : (Note, NoteString)
+  { selectedRoots : List Note
+  , root : (Note, NoteString)
   , tempo : Int
   , counts : Int
   , lastTick : Time
@@ -34,14 +36,15 @@ type alias Model =
 
 init : (Model, Cmd Msg)
 init =
-  ( { root = (Note.Bb, "Bb")
+  ( { selectedRoots = Note.all
+    , root = (Note.Bb, "Bb")
     , tempo = 60
     , counts = 2
     , lastTick = 0
     , shouldSync = False
     , isPaused = False
     }
-  , Random.generate NextNoteString (randomNote Note.Bb)
+  , Random.generate NextNoteString (randomNote Note.all)
   )
 
 
@@ -52,6 +55,7 @@ init =
 type Msg
   = NextNoteString Note
   | NextNotePair Note NoteString
+  | ToggleRoot Note Bool
   | Tick Time
   | Sync
   | Pause
@@ -60,10 +64,9 @@ type Msg
   | IncrementTempo
   | DecrementTempo
 
-randomNote : Note -> Random.Generator Note
-randomNote exclude =
-  Note.all
-  |> List.filter (\note -> note /= exclude)
+randomNote : List Note -> Random.Generator Note
+randomNote includes =
+  log "includes" includes
   |> Random.List.choose
   |> Random.map (\(note, _) -> Maybe.withDefault Note.Db note)
 
@@ -83,6 +86,16 @@ update msg model = case msg of
     ( { model | root = (note, noteString) }
     , Cmd.none
     )
+
+  ToggleRoot root checked ->
+    if (checked) then
+      ( { model | selectedRoots = root :: model.selectedRoots }
+      , Cmd.none
+      )
+    else
+      ( { model | selectedRoots = List.filter (\e -> e /= root) model.selectedRoots }
+      , Cmd.none
+      )
 
   Tick time ->
     let
@@ -104,11 +117,11 @@ update msg model = case msg of
                 lastTick = time,
                 shouldSync = False
             }
-          , Random.generate NextNoteString (randomNote <| Tuple.first model.root)
+          , Random.generate NextNoteString (randomNote model.selectedRoots)
           )
         else if (not model.isPaused && time >= rotateAt) then
           ( { model | lastTick = rotateAt }
-          , Random.generate NextNoteString (randomNote <| Tuple.first model.root)
+          , Random.generate NextNoteString (randomNote model.selectedRoots)
           )
         else 
           (model, Cmd.none)
@@ -149,10 +162,20 @@ update msg model = case msg of
 
 -- VIEW
 
+renderRootCheckbox : List Note -> Note -> Html Msg
+renderRootCheckbox selectedRoots root = span []
+  [ input
+      [ type_ "checkbox"
+      , checked <| List.member root selectedRoots
+      , onCheck (ToggleRoot root)
+      ] []
+  , label [] [text <| String.join " / " (Note.toString root)]
+  ]
 
 view : Model -> Html Msg
 view model = div []
-  [ h1 [] [text <| Tuple.second model.root]
+  [ div [] (List.map (renderRootCheckbox model.selectedRoots) Note.all)
+  , h1 [] [text <| Tuple.second model.root]
   , div []
     [ button [onClick DecrementTempo] [text "-"]
     , text (toString model.tempo)
