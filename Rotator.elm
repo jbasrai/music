@@ -23,9 +23,14 @@ main =
 
 
 -- INIT
+
+type alias Voicing =
+  { root : Note
+  }
+
 type alias Model =
   { selectedRoots : List Note
-  , root : (Note, NoteString)
+  , voicing : Voicing
   , tempo : Int
   , counts : Int
   , lastTick : Time
@@ -37,14 +42,14 @@ type alias Model =
 init : (Model, Cmd Msg)
 init =
   ( { selectedRoots = Note.all
-    , root = (Note.Bb, "Bb")
+    , voicing = Voicing Note.Bb
     , tempo = 60
     , counts = 2
     , lastTick = 0
     , shouldSync = False
     , isPaused = False
     }
-  , Random.generate NextNoteString (randomNote Note.all)
+  , Random.generate NextVoicing (randomVoicing Note.all)
   )
 
 
@@ -53,9 +58,9 @@ init =
 
 
 type Msg
-  = NextNoteString Note
-  | NextNotePair Note NoteString
+  = NextVoicing Voicing
   | ToggleRoot Note Bool
+  | ToggleAllRoots Bool
   | Tick Time
   | Sync
   | Pause
@@ -66,24 +71,17 @@ type Msg
 
 randomNote : List Note -> Random.Generator Note
 randomNote includes =
-  log "includes" includes
-  |> Random.List.choose
-  |> Random.map (\(note, _) -> Maybe.withDefault Note.Db note)
+  Random.List.choose includes
+  |> Random.map (\(note, _) -> Maybe.withDefault Note.Bb note)
 
-randomNoteString : Note -> Random.Generator NoteString
-randomNoteString note =
-  Random.List.choose (Note.toString note)
-  |> Random.map (\(noteString, _) -> Maybe.withDefault "Bb" noteString)
+randomVoicing : List Note -> Random.Generator Voicing
+randomVoicing includeNotes =
+  Random.map Voicing (randomNote includeNotes)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
-  NextNoteString note ->
-    ( model
-    , Random.generate (NextNotePair note) (randomNoteString note)
-    )
-
-  NextNotePair note noteString ->
-    ( { model | root = (note, noteString) }
+  NextVoicing voicing ->
+    ( { model | voicing = voicing }
     , Cmd.none
     )
 
@@ -94,6 +92,16 @@ update msg model = case msg of
       )
     else
       ( { model | selectedRoots = List.filter (\e -> e /= root) model.selectedRoots }
+      , Cmd.none
+      )
+
+  ToggleAllRoots checked ->
+    if (checked) then
+      ( { model | selectedRoots = Note.all }
+      , Cmd.none
+      )
+    else 
+      ( { model | selectedRoots = [] }
       , Cmd.none
       )
 
@@ -117,11 +125,11 @@ update msg model = case msg of
                 lastTick = time,
                 shouldSync = False
             }
-          , Random.generate NextNoteString (randomNote model.selectedRoots)
+          , Random.generate NextVoicing (randomVoicing model.selectedRoots)
           )
         else if (not model.isPaused && time >= rotateAt) then
           ( { model | lastTick = rotateAt }
-          , Random.generate NextNoteString (randomNote model.selectedRoots)
+          , Random.generate NextVoicing (randomVoicing model.selectedRoots)
           )
         else 
           (model, Cmd.none)
@@ -172,10 +180,27 @@ renderRootCheckbox selectedRoots root = span []
   , label [] [text <| String.join " / " (Note.toString root)]
   ]
 
+renderRoots : List Note -> Html Msg
+renderRoots selectedRoots =
+  let
+      allRoots = span []
+        [ input
+          [ type_ "checkbox"
+          , checked <| List.length selectedRoots == 12
+          , onCheck ToggleAllRoots
+          ] []
+        , label [] [text "Roots"]
+        ]
+
+      roots =
+        List.map (renderRootCheckbox selectedRoots) Note.all
+  in
+      div [] (allRoots :: roots)
+
 view : Model -> Html Msg
 view model = div []
-  [ div [] (List.map (renderRootCheckbox model.selectedRoots) Note.all)
-  , h1 [] [text <| Tuple.second model.root]
+  [ renderRoots model.selectedRoots
+  , h1 [] [text <| toString model.voicing]
   , div []
     [ button [onClick DecrementTempo] [text "-"]
     , text (toString model.tempo)
