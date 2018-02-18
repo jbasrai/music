@@ -9,6 +9,8 @@ import Note exposing (Note, NoteString)
 import Chord exposing (Chord)
 import Maybe
 import Time exposing (Time)
+import Tone exposing (Tone)
+import Array
 
 -- TODO: pseudo random
 -- TODO: save settings in local storage
@@ -25,15 +27,32 @@ main =
 
 -- INIT
 
+
 type alias Voicing =
   { rootString : Maybe NoteString
   , root : Maybe Note
   , chord : Maybe Chord
+  , lead : Maybe Lead
   }
+
+
+type Lead = One | Three | Five | SixSeven
+
+leadIndex : Lead -> Int
+leadIndex lead = case lead of
+  One -> 0
+  Three -> 1
+  Five -> 2
+  SixSeven -> 3
+
+allLeads : List Lead
+allLeads = [ One, Three, Five, SixSeven ]
+
 
 type alias Model =
   { selectedRoots : List Note
   , selectedChords : List Chord
+  , selectedLeads : List Lead
   , voicing : Maybe Voicing
   , tempo : Int
   , counts : Int
@@ -47,6 +66,7 @@ init : (Model, Cmd Msg)
 init =
   ( { selectedRoots = Note.all
     , selectedChords = Chord.all
+    , selectedLeads = allLeads
     , voicing = Nothing
     , tempo = 60
     , counts = 2
@@ -54,7 +74,7 @@ init =
     , shouldSync = False
     , isPaused = False
     }
-  , Random.generate NextVoicing (randomVoicing Note.all Chord.all)
+  , Random.generate NextVoicing (randomVoicing Note.all Chord.all allLeads)
   )
 
 
@@ -65,10 +85,15 @@ init =
 type Msg
   = NextVoicing Voicing
   | NextVoicing2 Voicing (Maybe NoteString)
+  -- Toggle individual
   | ToggleRoot Note Bool
   | ToggleChord Chord Bool
+  | ToggleLead Lead Bool
+  -- Toggle all
   | ToggleAllRoots Bool
   | ToggleAllChords Bool
+  | ToggleAllLeads Bool
+  --
   | Tick Time
   | Sync
   | Pause
@@ -83,8 +108,8 @@ randomNote includes =
   |> Random.map Tuple.first
 
 randomNoteString : Maybe Note -> Random.Generator (Maybe NoteString)
-randomNoteString noteOpt =
-  noteOpt
+randomNoteString note =
+  note
   |> Maybe.map Note.toString
   |> Maybe.withDefault []
   |> Random.List.choose
@@ -96,15 +121,27 @@ randomChord includes =
   |> Random.List.choose
   |> Random.map Tuple.first
 
-randomVoicing : List Note -> List Chord -> Random.Generator Voicing
-randomVoicing includeNotes includeChords =
-  Random.map2 (Voicing Nothing) (randomNote includeNotes) (randomChord includeChords)
+randomLead : List Lead -> Random.Generator (Maybe Lead)
+randomLead selectedLeads =
+  selectedLeads
+  |> Random.List.choose
+  |> Random.map Tuple.first
+
+randomVoicing : List Note -> List Chord -> List Lead -> Random.Generator Voicing
+randomVoicing includeNotes includeChords includeLeads =
+  Random.map3
+    (Voicing Nothing)
+    (randomNote includeNotes)
+    (randomChord includeChords)
+    (randomLead includeLeads)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
   NextVoicing voicing ->
     ( model
-    , Random.generate (NextVoicing2 voicing) (randomNoteString voicing.root)
+    , Random.generate
+        (NextVoicing2 voicing)
+        (randomNoteString voicing.root)
     )
 
   NextVoicing2 ({root, chord} as voicing) rootString ->
@@ -137,6 +174,18 @@ update msg model = case msg of
       , Cmd.none
       )
 
+  ToggleLead lead checked ->
+    let
+        selectedLeads =
+          if (checked) then
+            lead :: model.selectedLeads
+          else
+            List.filter (\e -> e /= lead) model.selectedLeads
+    in
+        ( { model | selectedLeads = selectedLeads }
+        , Cmd.none
+        )
+
   ToggleAllRoots checked ->
     if (checked) then
       ( { model | selectedRoots = Note.all }
@@ -156,6 +205,13 @@ update msg model = case msg of
       ( { model | selectedChords = [] }
       , Cmd.none
       )
+
+  ToggleAllLeads checked ->
+    let selectedLeads = if (checked) then allLeads else []
+    in
+        ( { model | selectedLeads = selectedLeads }
+        , Cmd.none
+        )
 
   Tick time ->
     let
@@ -177,11 +233,11 @@ update msg model = case msg of
                 lastTick = time,
                 shouldSync = False
             }
-          , Random.generate NextVoicing (randomVoicing model.selectedRoots model.selectedChords)
+          , Random.generate NextVoicing (randomVoicing model.selectedRoots model.selectedChords model.selectedLeads)
           )
         else if (not model.isPaused && time >= rotateAt) then
           ( { model | lastTick = rotateAt }
-          , Random.generate NextVoicing (randomVoicing model.selectedRoots model.selectedChords)
+          , Random.generate NextVoicing (randomVoicing model.selectedRoots model.selectedChords model.selectedLeads)
           )
         else 
           (model, Cmd.none)
@@ -249,6 +305,14 @@ renderChordCheckbox selectedChords chord =
     (toString chord)
 
 
+renderLeadCheckbox : List Lead -> Lead -> Html Msg
+renderLeadCheckbox selectedLeads lead =
+  renderCheckbox
+    (List.member lead selectedLeads)
+    (ToggleLead lead)
+    (toString lead)
+
+
 renderRoots : List Note -> Html Msg
 renderRoots selectedRoots =
   let
@@ -271,12 +335,30 @@ renderChords selectedChords =
   in
       div [] (allChords :: chords)
 
+renderLeads : List Lead -> Html Msg
+renderLeads selectedLeads =
+  let
+      alLeads : Html Msg
+      alLeads =
+        renderCheckbox
+          (List.length selectedLeads == List.length allLeads)
+          ToggleAllLeads
+          "Leads"
+
+      leads : List (Html Msg)
+      leads =
+        List.map (renderLeadCheckbox selectedLeads) allLeads
+  in
+      div [] (alLeads :: leads)
+
+      
 renderVoicing : Maybe Voicing -> Html Msg
 renderVoicing voicing =
   voicing
   |> Maybe.map (\voicing ->
       [ voicing.rootString
       , Maybe.map toString voicing.chord
+      , Maybe.map toString voicing.lead
       ])
   |> (Maybe.map <| List.map <| Maybe.withDefault "")
   |> Maybe.map (String.join " ")
@@ -289,6 +371,7 @@ view : Model -> Html Msg
 view model = div []
   [ renderRoots model.selectedRoots
   , renderChords model.selectedChords
+  , renderLeads model.selectedLeads
   , renderVoicing model.voicing
   , div []
     [ button [onClick DecrementTempo] [text "-"]
