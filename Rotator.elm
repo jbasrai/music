@@ -6,6 +6,7 @@ import Debug exposing (log)
 import Random
 import Random.List
 import Note exposing (Note, NoteString)
+import Chord exposing (Chord)
 import Maybe
 import Time exposing (Time)
 
@@ -26,11 +27,13 @@ main =
 
 type alias Voicing =
   { root : Maybe Note
+  , chord : Maybe Chord
   }
 
 type alias Model =
   { selectedRoots : List Note
-  , voicing : Voicing
+  , selectedChords : List Chord
+  , voicing : Maybe Voicing
   , tempo : Int
   , counts : Int
   , lastTick : Time
@@ -42,14 +45,15 @@ type alias Model =
 init : (Model, Cmd Msg)
 init =
   ( { selectedRoots = Note.all
-    , voicing = Voicing Nothing
+    , selectedChords = Chord.all
+    , voicing = Nothing
     , tempo = 60
     , counts = 2
     , lastTick = 0
     , shouldSync = False
     , isPaused = False
     }
-  , Random.generate NextVoicing (randomVoicing Note.all)
+  , Random.generate NextVoicing (randomVoicing Note.all Chord.all)
   )
 
 
@@ -60,7 +64,9 @@ init =
 type Msg
   = NextVoicing Voicing
   | ToggleRoot Note Bool
+  | ToggleChord Chord Bool
   | ToggleAllRoots Bool
+  | ToggleAllChords Bool
   | Tick Time
   | Sync
   | Pause
@@ -74,16 +80,24 @@ randomNote includes =
   Random.List.choose includes
   |> Random.map Tuple.first
 
-randomVoicing : List Note -> Random.Generator Voicing
-randomVoicing includeNotes =
-  Random.map Voicing (randomNote includeNotes)
+randomChord : List Chord -> Random.Generator (Maybe Chord)
+randomChord includes =
+  includes
+  |> Random.List.choose
+  |> Random.map Tuple.first
+
+randomVoicing : List Note -> List Chord -> Random.Generator Voicing
+randomVoicing includeNotes includeChords =
+  Random.map2 Voicing (randomNote includeNotes) (randomChord includeChords)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
-  NextVoicing voicing ->
-    ( { model | voicing = voicing }
-    , Cmd.none
-    )
+  NextVoicing ({root, chord} as voicing) ->
+    let nextVoicing = case (root, chord) of 
+        (Nothing, Nothing) -> Nothing
+        _ -> Just voicing
+    in
+        ({ model | voicing = nextVoicing } , Cmd.none)
 
   ToggleRoot root checked ->
     if (checked) then
@@ -95,6 +109,17 @@ update msg model = case msg of
       , Cmd.none
       )
 
+  ToggleChord chord checked ->
+    if (checked) then
+      ( { model | selectedChords = chord :: model.selectedChords }
+      , Cmd.none
+      )
+    else
+      ( { model | selectedChords = List.filter (\e -> e /= chord) model.selectedChords }
+      , Cmd.none
+      )
+
+
   ToggleAllRoots checked ->
     if (checked) then
       ( { model | selectedRoots = Note.all }
@@ -102,6 +127,16 @@ update msg model = case msg of
       )
     else 
       ( { model | selectedRoots = [] }
+      , Cmd.none
+      )
+
+  ToggleAllChords checked ->
+    if (checked) then
+      ( { model | selectedChords = Chord.all }
+      , Cmd.none
+      )
+    else 
+      ( { model | selectedChords = [] }
       , Cmd.none
       )
 
@@ -125,11 +160,11 @@ update msg model = case msg of
                 lastTick = time,
                 shouldSync = False
             }
-          , Random.generate NextVoicing (randomVoicing model.selectedRoots)
+          , Random.generate NextVoicing (randomVoicing model.selectedRoots model.selectedChords)
           )
         else if (not model.isPaused && time >= rotateAt) then
           ( { model | lastTick = rotateAt }
-          , Random.generate NextVoicing (randomVoicing model.selectedRoots)
+          , Random.generate NextVoicing (randomVoicing model.selectedRoots model.selectedChords)
           )
         else 
           (model, Cmd.none)
@@ -170,36 +205,60 @@ update msg model = case msg of
 
 -- VIEW
 
-renderRootCheckbox : List Note -> Note -> Html Msg
-renderRootCheckbox selectedRoots root = span []
+
+renderCheckbox : Bool -> (Bool -> Msg) -> String -> Html Msg
+renderCheckbox c oc t = span []
   [ input
       [ type_ "checkbox"
-      , checked <| List.member root selectedRoots
-      , onCheck (ToggleRoot root)
+      , checked c
+      , onCheck oc
       ] []
-  , label [] [text <| String.join " / " (Note.toString root)]
+  , label [] [text t]
   ]
+    
+
+renderRootCheckbox : List Note -> Note -> Html Msg
+renderRootCheckbox selectedRoots root =
+  renderCheckbox
+    (List.member root selectedRoots)
+    (ToggleRoot root)
+    (String.join " / " (Note.toString root))
+
+
+renderChordCheckbox : List Chord -> Chord -> Html Msg
+renderChordCheckbox selectedChords chord =
+  renderCheckbox
+    (List.member chord selectedChords)
+    (ToggleChord chord)
+    (toString chord)
+
 
 renderRoots : List Note -> Html Msg
 renderRoots selectedRoots =
   let
-      allRoots = span []
-        [ input
-          [ type_ "checkbox"
-          , checked <| List.length selectedRoots == 12
-          , onCheck ToggleAllRoots
-          ] []
-        , label [] [text "Roots"]
-        ]
+      allRoots =
+        renderCheckbox (List.length selectedRoots == 12) ToggleAllRoots "Roots"
 
       roots =
         List.map (renderRootCheckbox selectedRoots) Note.all
   in
       div [] (allRoots :: roots)
 
+renderChords : List Chord -> Html Msg
+renderChords selectedChords =
+  let
+      allChords =
+        renderCheckbox (List.length selectedChords == 9) ToggleAllChords "Chords"
+
+      chords =
+        List.map (renderChordCheckbox selectedChords) Chord.all
+  in
+      div [] (allChords :: chords)
+
 view : Model -> Html Msg
 view model = div []
   [ renderRoots model.selectedRoots
+  , renderChords model.selectedChords
   , h1 [] [text <| toString model.voicing]
   , div []
     [ button [onClick DecrementTempo] [text "-"]
