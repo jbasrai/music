@@ -25,7 +25,7 @@ main =
 -- INIT
 
 type alias Voicing =
-  { root : Note
+  { root : Maybe Note
   }
 
 type alias Model =
@@ -42,7 +42,7 @@ type alias Model =
 init : (Model, Cmd Msg)
 init =
   ( { selectedRoots = Note.all
-    , voicing = Voicing Note.Bb
+    , voicing = Voicing Nothing
     , tempo = 60
     , counts = 2
     , lastTick = 0
@@ -69,10 +69,10 @@ type Msg
   | IncrementTempo
   | DecrementTempo
 
-randomNote : List Note -> Random.Generator Note
+randomNote : List Note -> Random.Generator (Maybe Note)
 randomNote includes =
   Random.List.choose includes
-  |> Random.map (\(note, _) -> Maybe.withDefault Note.Bb note)
+  |> Random.map Tuple.first
 
 randomVoicing : List Note -> Random.Generator Voicing
 randomVoicing includeNotes =
