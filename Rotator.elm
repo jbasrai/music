@@ -26,7 +26,8 @@ main =
 -- INIT
 
 type alias Voicing =
-  { root : Maybe Note
+  { rootString : Maybe NoteString
+  , root : Maybe Note
   , chord : Maybe Chord
   }
 
@@ -63,6 +64,7 @@ init =
 
 type Msg
   = NextVoicing Voicing
+  | NextVoicing2 Voicing (Maybe NoteString)
   | ToggleRoot Note Bool
   | ToggleChord Chord Bool
   | ToggleAllRoots Bool
@@ -80,6 +82,14 @@ randomNote includes =
   Random.List.choose includes
   |> Random.map Tuple.first
 
+randomNoteString : Maybe Note -> Random.Generator (Maybe NoteString)
+randomNoteString noteOpt =
+  noteOpt
+  |> Maybe.map Note.toString
+  |> Maybe.withDefault []
+  |> Random.List.choose
+  |> Random.map Tuple.first
+
 randomChord : List Chord -> Random.Generator (Maybe Chord)
 randomChord includes =
   includes
@@ -88,16 +98,24 @@ randomChord includes =
 
 randomVoicing : List Note -> List Chord -> Random.Generator Voicing
 randomVoicing includeNotes includeChords =
-  Random.map2 Voicing (randomNote includeNotes) (randomChord includeChords)
+  Random.map2 (Voicing Nothing) (randomNote includeNotes) (randomChord includeChords)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
-  NextVoicing ({root, chord} as voicing) ->
-    let nextVoicing = case (root, chord) of 
-        (Nothing, Nothing) -> Nothing
-        _ -> Just voicing
+  NextVoicing voicing ->
+    ( model
+    , Random.generate (NextVoicing2 voicing) (randomNoteString voicing.root)
+    )
+
+  NextVoicing2 ({root, chord} as voicing) rootString ->
+    let
+        nextVoicing = case (root, chord) of
+          (Nothing, Nothing) -> Nothing
+          _ -> Just { voicing | rootString = rootString }
     in
-        ({ model | voicing = nextVoicing } , Cmd.none)
+        ( { model | voicing = nextVoicing }
+        , Cmd.none
+        )
 
   ToggleRoot root checked ->
     if (checked) then
@@ -118,7 +136,6 @@ update msg model = case msg of
       ( { model | selectedChords = List.filter (\e -> e /= chord) model.selectedChords }
       , Cmd.none
       )
-
 
   ToggleAllRoots checked ->
     if (checked) then
@@ -181,7 +198,6 @@ update msg model = case msg of
     ( { model | isPaused = True }
     , Cmd.none
     )
-
 
   IncrementCount ->
     ( { model | counts = model.counts + 1 }
@@ -255,11 +271,25 @@ renderChords selectedChords =
   in
       div [] (allChords :: chords)
 
+renderVoicing : Maybe Voicing -> Html Msg
+renderVoicing voicing =
+  voicing
+  |> Maybe.map (\voicing ->
+      [ voicing.rootString
+      , Maybe.map toString voicing.chord
+      ])
+  |> (Maybe.map <| List.map <| Maybe.withDefault "")
+  |> Maybe.map (String.join " ")
+  |> Maybe.withDefault "choose a note or chord"
+  |> text
+  |> List.singleton
+  |> h1 []
+
 view : Model -> Html Msg
 view model = div []
   [ renderRoots model.selectedRoots
   , renderChords model.selectedChords
-  , h1 [] [text <| toString model.voicing]
+  , renderVoicing model.voicing
   , div []
     [ button [onClick DecrementTempo] [text "-"]
     , text (toString model.tempo)
