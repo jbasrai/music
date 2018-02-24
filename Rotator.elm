@@ -59,6 +59,7 @@ type alias Model =
   , lastTick : Time
   , shouldSync : Bool
   , isPaused : Bool
+  , counter : Int
   }
 
 
@@ -73,6 +74,7 @@ init =
     , lastTick = 0
     , shouldSync = False
     , isPaused = False
+    , counter = 0
     }
   , Random.generate NextVoicing (randomVoicing Note.all Chord.all allLeads)
   )
@@ -101,6 +103,7 @@ type Msg
   | DecrementCount
   | IncrementTempo
   | DecrementTempo
+  | ResetCounter
 
 randomNote : List Note -> Random.Generator (Maybe Note)
 randomNote includes =
@@ -150,7 +153,10 @@ update msg model = case msg of
           (Nothing, Nothing) -> Nothing
           _ -> Just { voicing | rootString = rootString }
     in
-        ( { model | voicing = nextVoicing }
+        ( { model |
+              voicing = nextVoicing,
+              counter = model.counter + 1
+          }
         , Cmd.none
         )
 
@@ -275,6 +281,11 @@ update msg model = case msg of
     , Cmd.none
     )
 
+  ResetCounter ->
+    ( { model | counter = 0 }
+    , Cmd.none
+    )
+
 -- VIEW
 
 
@@ -374,15 +385,19 @@ view model = div []
   , renderLeads model.selectedLeads
   , renderVoicing model.voicing
   , div []
-    [ button [onClick DecrementTempo] [text "-"]
-    , text (toString model.tempo)
-    , button [onClick IncrementTempo] [text "+"]
-    ]
+      [ span [] [text <| toString model.counter]
+      , button [onClick ResetCounter] [text "reset"]
+      ]
   , div []
-    [ button [onClick DecrementCount] [text "-"]
-    , text (toString model.counts)
-    , button [onClick IncrementCount] [text "+"]
-    ]
+      [ button [onClick DecrementTempo] [text "-"]
+      , text (toString model.tempo)
+      , button [onClick IncrementTempo] [text "+"]
+      ]
+  , div []
+      [ button [onClick DecrementCount] [text "-"]
+      , text (toString model.counts)
+      , button [onClick IncrementCount] [text "+"]
+      ]
   , div [] [text (if (model.isPaused) then "Paused" else "Playing")]
   , button [onClick Sync] [text "sync"]
   , button [onClick Pause] [text "pause"]
