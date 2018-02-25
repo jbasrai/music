@@ -60,6 +60,8 @@ type alias Model =
   , shouldSync : Bool
   , isPaused : Bool
   , counter : Int
+  , misses: Int
+  , history : List Voicing
   }
 
 
@@ -75,6 +77,8 @@ init =
     , shouldSync = False
     , isPaused = False
     , counter = 0
+    , misses = 0
+    , history = []
     }
   , Random.generate NextVoicing (randomVoicing Note.all Chord.all allLeads)
   )
@@ -104,6 +108,7 @@ type Msg
   | IncrementTempo
   | DecrementTempo
   | ResetCounter
+  | IncrementMisses
 
 randomNote : List Note -> Random.Generator (Maybe Note)
 randomNote includes =
@@ -155,7 +160,8 @@ update msg model = case msg of
     in
         ( { model |
               voicing = nextVoicing,
-              counter = model.counter + 1
+              counter = model.counter + 1,
+              history = voicing :: (List.take 10 model.history)
           }
         , Cmd.none
         )
@@ -282,7 +288,12 @@ update msg model = case msg of
     )
 
   ResetCounter ->
-    ( { model | counter = 0 }
+    ( { model | counter = 0, misses = 0 }
+    , Cmd.none
+    )
+
+  IncrementMisses ->
+    ( { model | misses = model.misses + 1, counter = model.counter - 1}
     , Cmd.none
     )
 
@@ -362,21 +373,37 @@ renderLeads selectedLeads =
   in
       div [] (alLeads :: leads)
 
-      
+
+voicingText : Voicing -> String
+voicingText voicing =
+  [ voicing.rootString
+  , Maybe.map toString voicing.chord
+  , Maybe.map toString voicing.lead
+  ]
+  |> (List.map <| Maybe.withDefault "")
+  |> String.join " "
+
+
 renderVoicing : Maybe Voicing -> Html Msg
 renderVoicing voicing =
   voicing
-  |> Maybe.map (\voicing ->
-      [ voicing.rootString
-      , Maybe.map toString voicing.chord
-      , Maybe.map toString voicing.lead
-      ])
-  |> (Maybe.map <| List.map <| Maybe.withDefault "")
-  |> Maybe.map (String.join " ")
+  |> Maybe.map voicingText
   |> Maybe.withDefault "choose a note or chord"
   |> text
   |> List.singleton
   |> h1 []
+
+
+renderHistory : List Voicing -> Html Msg
+renderHistory history =
+  let
+      renderVoicing : Voicing -> Html Msg
+      renderVoicing voicing =
+        div [] [text <| voicingText voicing]
+  in
+      history
+      |> List.map renderVoicing
+      |> div []
 
 view : Model -> Html Msg
 view model = div []
@@ -387,6 +414,8 @@ view model = div []
   , div []
       [ span [] [text <| toString model.counter]
       , button [onClick ResetCounter] [text "reset"]
+      , span [] [text <| toString model.misses]
+      , button [onClick IncrementMisses] [text "miss"]
       ]
   , div []
       [ button [onClick DecrementTempo] [text "-"]
@@ -401,6 +430,7 @@ view model = div []
   , div [] [text (if (model.isPaused) then "Paused" else "Playing")]
   , button [onClick Sync] [text "sync"]
   , button [onClick Pause] [text "pause"]
+  , renderHistory model.history
   ]
 
 
