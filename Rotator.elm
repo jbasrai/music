@@ -161,7 +161,9 @@ update msg model = case msg of
         ( { model |
               voicing = nextVoicing,
               counter = model.counter + 1,
-              history = voicing :: (List.take 10 model.history)
+              history = model.voicing
+                        |> (Maybe.map <| flip (::) <| List.take 10 model.history)
+                        |> Maybe.withDefault model.history
           }
         , Cmd.none
         )
