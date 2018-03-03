@@ -60,7 +60,6 @@ type alias Model =
   , shouldSync : Bool
   , isPaused : Bool
   , counter : Int
-  , misses: Int
   , history : List Voicing
   }
 
@@ -77,7 +76,6 @@ init =
     , shouldSync = False
     , isPaused = False
     , counter = 0
-    , misses = 0
     , history = []
     }
   , Random.generate NextVoicing (randomVoicing Note.all Chord.all allLeads)
@@ -108,7 +106,6 @@ type Msg
   | IncrementTempo
   | DecrementTempo
   | ResetCounter
-  | IncrementMisses
 
 randomNote : List Note -> Random.Generator (Maybe Note)
 randomNote includes =
@@ -290,12 +287,7 @@ update msg model = case msg of
     )
 
   ResetCounter ->
-    ( { model | counter = 0, misses = 0 }
-    , Cmd.none
-    )
-
-  IncrementMisses ->
-    ( { model | misses = model.misses + 1, counter = model.counter - 1}
+    ( { model | counter = 0 }
     , Cmd.none
     )
 
@@ -416,8 +408,6 @@ view model = div []
   , div []
       [ span [] [text <| toString model.counter]
       , button [onClick ResetCounter] [text "reset"]
-      , span [] [text <| toString model.misses]
-      , button [onClick IncrementMisses] [text "miss"]
       ]
   , div []
       [ button [onClick DecrementTempo] [text "-"]
