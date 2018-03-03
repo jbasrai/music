@@ -30,6 +30,7 @@ main =
 
 type alias Voicing =
   { rootString : Maybe NoteString
+  , chordString : Maybe String
   , root : Maybe Note
   , chord : Maybe Chord
   , lead : Maybe Lead
@@ -88,7 +89,7 @@ init =
 
 type Msg
   = NextVoicing Voicing
-  | NextVoicing2 Voicing (Maybe NoteString)
+  | NextVoicing2 Voicing (Maybe NoteString, Maybe String)
   -- Toggle individual
   | ToggleRoot Note Bool
   | ToggleChord Chord Bool
@@ -120,6 +121,14 @@ randomNoteString note =
   |> Random.List.choose
   |> Random.map Tuple.first
 
+randomChordString : Maybe Chord -> Random.Generator (Maybe String)
+randomChordString chord =
+  chord
+  |> Maybe.map Chord.toStrings
+  |> Maybe.withDefault []
+  |> Random.List.choose
+  |> Random.map Tuple.first
+
 randomChord : List Chord -> Random.Generator (Maybe Chord)
 randomChord includes =
   includes
@@ -135,7 +144,7 @@ randomLead selectedLeads =
 randomVoicing : List Note -> List Chord -> List Lead -> Random.Generator Voicing
 randomVoicing includeNotes includeChords includeLeads =
   Random.map3
-    (Voicing Nothing)
+    (Voicing Nothing Nothing)
     (randomNote includeNotes)
     (randomChord includeChords)
     (randomLead includeLeads)
@@ -146,14 +155,21 @@ update msg model = case msg of
     ( model
     , Random.generate
         (NextVoicing2 voicing)
-        (randomNoteString voicing.root)
+        (Random.map2
+          (,)
+          (randomNoteString voicing.root)
+          (randomChordString voicing.chord)
+        )
     )
 
-  NextVoicing2 ({root, chord} as voicing) rootString ->
+  NextVoicing2 ({root, chord} as voicing) (rootString, chordString) ->
     let
         nextVoicing = case (root, chord) of
           (Nothing, Nothing) -> Nothing
-          _ -> Just { voicing | rootString = rootString }
+          _ -> Just { voicing |
+                        rootString = rootString,
+                        chordString = chordString
+                    }
     in
         ( { model |
               voicing = nextVoicing,
@@ -370,12 +386,20 @@ renderLeads selectedLeads =
 
 voicingText : Voicing -> String
 voicingText voicing =
-  [ voicing.rootString
-  , Maybe.map toString voicing.chord
-  , Maybe.map toString voicing.lead
-  ]
-  |> (List.map <| Maybe.withDefault "")
-  |> String.join " "
+    let
+        first = 
+          [ voicing.rootString
+          , voicing.chordString
+          ]
+          |> List.map (Maybe.withDefault "")
+          |> String.join ""
+
+        second =
+          voicing.lead
+          |> Maybe.map toString
+          |> Maybe.withDefault ""
+    in
+        first ++ " " ++ second
 
 
 renderVoicing : Maybe Voicing -> Html Msg
