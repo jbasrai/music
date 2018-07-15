@@ -1,6 +1,6 @@
 import Html exposing (Html, div, text, button)
 import Html.Events exposing (onClick)
-import Generator exposing (Pitch(..), Note(..), Letter(..), Accidental(..), notes, note)
+import Generator exposing (Pitch(..), Note(..), Letter(..), Accidental(..), note)
 import Random exposing (Generator)
 import Random.List
 

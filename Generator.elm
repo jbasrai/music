@@ -1,4 +1,4 @@
-module Generator exposing (Pitch(..), Note(..), Letter(..), Accidental(..), notes, note)
+module Generator exposing (Pitch(..), Note(..), Letter(..), Accidental(..), noteOptions, note)
 import Random exposing (Generator)
 import Random.List
 
@@ -54,8 +54,8 @@ type Pitch
 
 
 -- only meant to translate pitches to roots, so notes like "E Sharp" don't get returned
-notes : Pitch -> List Note
-notes pitch =
+noteOptions : Pitch -> List Note
+noteOptions pitch =
     case pitch of
         Do -> 
             [ Note C Natural
@@ -100,7 +100,7 @@ notes pitch =
 note : Pitch -> Generator Note
 note pitch =
   pitch
-  |> notes
+  |> noteOptions
   |> Random.List.choose
   |> Random.map Tuple.first
   |> Random.map (Maybe.withDefault (Note C Natural))
