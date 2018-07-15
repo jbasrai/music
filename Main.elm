@@ -1,6 +1,12 @@
 import Html exposing (Html, div, text, button)
 import Html.Events exposing (onClick)
-import Generator exposing (Pitch(..), Note(..), Letter(..), Accidental(..), note)
+import Generator exposing
+  ( Pitch(..)
+  , Note(..)
+  , Letter(..)
+  , Accidental(..)
+  , chooseNote
+  )
 import Random exposing (Generator)
 import Random.List
 
@@ -36,7 +42,7 @@ type Msg = Get | Go Note
 
 
 fetch : Cmd Msg
-fetch = Random.generate Go (note Fi)
+fetch = Random.generate Go (chooseNote Fi)
 
 
 update : Msg -> Model -> (Model, Cmd Msg)

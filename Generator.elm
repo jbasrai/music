@@ -1,4 +1,11 @@
-module Generator exposing (Pitch(..), Note(..), Letter(..), Accidental(..), noteOptions, note)
+module Generator exposing
+  ( Pitch(..)
+  , Note(..)
+  , Letter(..)
+  , Accidental(..)
+  , noteOptions
+  , chooseNote
+  )
 import Random exposing (Generator)
 import Random.List
 
@@ -97,8 +104,8 @@ noteOptions pitch =
             ]
 
 
-note : Pitch -> Generator Note
-note pitch =
+chooseNote : Pitch -> Generator Note
+chooseNote pitch =
   pitch
   |> noteOptions
   |> Random.List.choose
