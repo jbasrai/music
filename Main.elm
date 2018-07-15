@@ -1,12 +1,16 @@
-import Html exposing (Html, div, text)
-
+import Html exposing (Html, div, text, button)
+import Html.Events exposing (onClick)
+import Generator exposing (Pitch(..), Note(..), Letter(..), Accidental(..), notes, note)
+import Random exposing (Generator)
+import Random.List
 
 
 main =
-    Html.beginnerProgram
-        { model = model
+    Html.program
+        { init = init
         , view = view
         , update = update
+        , subscriptions = subscriptions
         }
 
 
@@ -14,22 +18,32 @@ main =
 -- MODEL
 
 
-type alias Model = Int
+type alias Model = Note
 
 
-model : Model
-model = 0
+init : (Model, Cmd Msg)
+init =
+  ( Note C Natural
+  , fetch
+  )
 
 
 
 -- UPDATE
 
 
-type alias Msg = Int
+type Msg = Get | Go Note
 
 
-update : Model -> Msg -> Model
-update model msg = 0
+fetch : Cmd Msg
+fetch = Random.generate Go (note Fi)
+
+
+update : Msg -> Model -> (Model, Cmd Msg)
+update msg model =
+  case msg of
+    Get -> (model, fetch)
+    Go x -> (x, Cmd.none)
 
 
 
@@ -37,4 +51,17 @@ update model msg = 0
 
 view : Model -> Html Msg
 view model =
-    div [] [text "hello"]
+    div []
+      [ text (toString model)
+      , button
+          [ onClick Get
+          ]
+          [ text "click me"
+          ]
+      ]
+
+-- SUBSCRIPTIONS
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Sub.none
