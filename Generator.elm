@@ -3,11 +3,16 @@ module Generator exposing
   , Note(..)
   , Letter(..)
   , Accidental(..)
+  , Mode(..)
+  , Interval(..)
   , noteOptions
   , chooseNote
+  , scale
+  , jump
   )
 import Random exposing (Generator)
 import Random.List
+import Array
 
 
 
@@ -38,9 +43,27 @@ type Interval
   | Flat9
   | Ma9
   | P11
-  | Sharp11
+  -- | Sharp11
   | Flat13
   | Ma13
+
+
+
+-- 1 based
+address : Interval -> (Mode, Int)
+address interval =
+  case interval of
+    P1 -> (Ionian, 1)
+    Mi3 -> (Phrygian, 3)
+    Ma3 -> (Ionian, 3)
+    P5 -> (Ionian, 5)
+    Mi7 -> (Phrygian, 7)
+    Ma7 -> (Ionian, 7)
+    Flat9 -> (Phrygian, 2)
+    Ma9 -> (Ionian, 2)
+    P11 -> (Ionian, 4)
+    Flat13 -> (Phrygian, 6)
+    Ma13 -> (Ionian, 6)
 
 
 
@@ -131,10 +154,126 @@ type Accidental
   | Sharp
 
 
-{-- jump : Interval -> Note -> Note
+
+type Mode = Ionian | Phrygian
 
 
 
+type alias Scale = List Note
+
+
+
+ionian : Note -> Maybe Scale
+ionian note =
+  case note of
+    Note A Natural -> Just
+      [ Note A Natural
+      , Note B Natural
+      , Note C Sharp
+      , Note D Natural
+      , Note E Natural
+      , Note F Sharp
+      , Note G Sharp
+      ]
+    Note B Flat -> Just
+      [ Note B Flat
+      , Note C Natural
+      , Note D Natural
+      , Note E Flat
+      , Note F Natural
+      , Note G Natural
+      , Note A Natural
+      ]
+    Note B Natural -> Just
+      [ Note B Natural
+      , Note C Sharp
+      , Note D Sharp
+      , Note E Natural
+      , Note F Sharp
+      , Note G Sharp
+      , Note A Sharp
+      ]
+    Note C Natural -> Just
+      [ Note C Natural
+      , Note D Natural
+      , Note E Natural
+      , Note F Natural
+      , Note G Natural
+      , Note A Natural
+      , Note B Natural
+      ]
+    Note E Flat -> Just
+      [ Note E Flat
+      , Note F Natural
+      , Note G Natural
+      , Note A Flat
+      , Note B Flat
+      , Note C Natural
+      , Note D Natural
+      ]
+    Note E Natural -> Just
+      [ Note E Natural
+      , Note F Sharp
+      , Note G Sharp
+      , Note A Natural
+      , Note B Natural
+      , Note C Sharp
+      , Note D Sharp
+      ]
+    Note F Natural -> Just
+      [ Note F Natural
+      , Note G Natural
+      , Note A Natural
+      , Note B Flat
+      , Note C Natural
+      , Note D Natural
+      , Note E Natural 
+      ]
+    Note F Sharp -> Just
+      [ Note F Sharp
+      , Note G Sharp
+      , Note A Sharp
+      , Note B Natural
+      , Note C Sharp
+      , Note D Sharp
+      , Note E Sharp
+      ]
+    Note G Natural -> Just
+      [ Note G Natural
+      , Note A Natural
+      , Note B Natural
+      , Note C Natural
+      , Note D Natural
+      , Note E Natural
+      , Note F Sharp
+      ]
+    _ ->
+      Debug.crash ("Note " ++ (toString note) ++ " not found.")
+
+
+
+scale : Mode -> Note -> Maybe Scale
+scale mode note =
+  case mode of
+    Ionian ->
+      ionian note
+    _ -> 
+      Debug.crash ("Mode " ++ (toString mode) ++ " not found.")
+
+
+
+jump : Interval -> Note -> Maybe Note
+jump interval note =
+  let
+      (mode, i) =
+        Debug.log "address" (address interval)
+  in
+      scale mode note
+      |> Maybe.map Array.fromList
+      |> Maybe.andThen (Array.get (i - 1))
+
+
+{--
 type alias Voicing =
   { chord : Chord
   , root : Pitch

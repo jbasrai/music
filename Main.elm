@@ -5,7 +5,11 @@ import Generator exposing
   , Note(..)
   , Letter(..)
   , Accidental(..)
+  , Mode(..)
+  , Interval(..)
   , chooseNote
+  , scale
+  , jump
   )
 import Random exposing (Generator)
 import Random.List
@@ -58,12 +62,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-      [ text (toString model)
-      , button
-          [ onClick Get
-          ]
-          [ text "click me"
-          ]
+      [ text <| toString <| jump Ma7 (Note F Sharp)
       ]
 
 -- SUBSCRIPTIONS
